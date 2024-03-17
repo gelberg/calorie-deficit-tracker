@@ -24,7 +24,7 @@ func main() {
 	values := url.Values{
 		// "oauth_callback": {"oob"},
 	}
-	oauthClient.SignForm(nil, "POST", oauthClient.TemporaryCredentialRequestURI, values, "oob")
+	oauthClient.SignForm(nil, "POST", oauthClient.TemporaryCredentialRequestURI, values, "", "oob")
 	tempCred, err := oauthClient.RequestTemporaryCredentials(nil, "oob", values)
 	if err != nil {
 		log.Fatal("RequestTemporaryCredentials:", err)
@@ -37,14 +37,21 @@ func main() {
 	var code string
 	fmt.Scanln(&code)
 
-	tokenCred, _, err := oauthClient.RequestToken(nil, tempCred, code)
+	values = url.Values{}
+	oauthClient.SignForm(tempCred, "POST", oauthClient.TokenRequestURI, values, code, "")
+	tokenCred, _, err := oauthClient.RequestToken(nil, tempCred, code, values)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	oauthClient.SignForm(nil, "GET", "https://platform.fatsecret.com/rest/server.api", values, "")
-	resp, err := oauthClient.Get(nil, tokenCred,
-		"https://platform.fatsecret.com/rest/server.api?method=food_entries.get_month&format=json&date=19782", values)
+	values = url.Values{
+		"method": {"food_entries.get_month"},
+		"format": {"json"},
+		"date":   {"19782"},
+	}
+	urlStr := "https://platform.fatsecret.com/rest/server.api"
+	oauthClient.SignForm(tokenCred, "GET", urlStr, values, "", "")
+	resp, err := oauthClient.Get(nil, tokenCred, urlStr, values)
 	if err != nil {
 		log.Fatal(err)
 	}
