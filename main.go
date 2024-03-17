@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -16,14 +18,8 @@ var oauthClient = oauth.Client{
 	TokenRequestURI:               "https://www.fatsecret.com/oauth/access_token",
 }
 
-func main() {
-	oauthClient.Credentials.Token = "***REMOVED***"
-	oauthClient.Credentials.Secret = "***REMOVED***"
-	oauthClient.SignatureMethod = oauth.HMACSHA1
-
-	values := url.Values{
-		// "oauth_callback": {"oob"},
-	}
+func authorize() *oauth.Credentials {
+	values := url.Values{}
 	oauthClient.SignForm(nil, "POST", oauthClient.TemporaryCredentialRequestURI, values, "", "oob")
 	tempCred, err := oauthClient.RequestTemporaryCredentials(nil, "oob", values)
 	if err != nil {
@@ -42,9 +38,42 @@ func main() {
 	tokenCred, _, err := oauthClient.RequestToken(nil, tempCred, code, values)
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		fmt.Println("Authorization has succeeded. Token credentials:\nToken: ", tokenCred.Token, "\nSecret: ", tokenCred.Secret)
 	}
 
-	values = url.Values{
+	return tokenCred
+}
+
+func main() {
+	var credPath = flag.String("client", "client.json", "Path to configuration file containing the client's credentials.")
+	b, err := os.ReadFile(*credPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = json.Unmarshal(b, &oauthClient.Credentials)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	oauthClient.SignatureMethod = oauth.HMACSHA1
+
+	var tokenCred *oauth.Credentials
+	credPath = flag.String("token", "token.json", "Path to configuration file containing the token's credentials.")
+	b, err = os.ReadFile(*credPath)
+	if err == nil {
+		err = json.Unmarshal(b, &tokenCred)
+	}
+
+	if err != nil {
+		tokenCred = authorize()
+
+		data, _ := json.Marshal(tokenCred)
+		os.WriteFile(*credPath, data, os.ModeAppend)
+	}
+
+	values := url.Values{
 		"method": {"food_entries.get_month"},
 		"format": {"json"},
 		"date":   {"19782"},
