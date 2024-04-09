@@ -1,2 +1,6 @@
 github.com/gomodule/oauth1 v0.2.0 h1:/nNHAD99yipOEspQFbAnNmwGTZ1UNXiD/+JLxwx79fo=
 github.com/gomodule/oauth1 v0.2.0/go.mod h1:4r/a8/3RkhMBxJQWL5qzbOEcaQmNPIkNoI7P8sXeI08=
+github.com/gelberg/oauth1 v0.2.1 h1:JavvY5o7l6fOjfoUO02jgKDaqedMYANWbKVjK+N6nQE=
+github.com/gelberg/oauth1 v0.2.1/go.mod h1:4r/a8/3RkhMBxJQWL5qzbOEcaQmNPIkNoI7P8sXeI08=
+github.com/gelberg/oauth1 v0.2.2 h1:uIWdoWX4v9gsZtUVYwdqapinNhW5zx7mlXuejVjFqYk=
+github.com/gelberg/oauth1 v0.2.2/go.mod h1:Z88OZF5n1aBchF3UA3zUaFRlHewOM+U+UuEfPYP5vCM=

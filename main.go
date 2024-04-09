@@ -8,8 +8,11 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strconv"
+	"time"
 
-	"github.com/gomodule/oauth1/oauth"
+	"github.com/gelberg/oauth1/oauth"
+	fat_secret "main.go/pkg" // TODO: fix this import?
 )
 
 var oauthClient = oauth.Client{
@@ -73,19 +76,33 @@ func main() {
 		os.WriteFile(*credPath, data, os.ModeAppend)
 	}
 
-	values := url.Values{
-		"method": {"food_entries.get_month"},
-		"format": {"json"},
-		"date":   {"19782"},
-	}
-	urlStr := "https://platform.fatsecret.com/rest/server.api"
-	oauthClient.SignForm(tokenCred, "GET", urlStr, values, "", "")
-	resp, err := oauthClient.Get(nil, tokenCred, urlStr, values)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
-		log.Fatal(err)
+	for {
+		values := url.Values{
+			"method": {"food_entries.get.v2"},
+			"format": {"json"},
+			// "date":   {"19782"}, // Missing argument means current day
+		}
+
+		urlStr := "https://platform.fatsecret.com/rest/server.api"
+		oauthClient.SignForm(tokenCred, "GET", urlStr, values, "", "")
+		resp, err := oauthClient.Get(nil, tokenCred, urlStr, values)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		response, err := io.ReadAll(resp.Body)
+
+		var food_entries_resp fat_secret.Response
+		json.Unmarshal(response, &food_entries_resp)
+
+		calories := 0
+		for _, food_entry := range food_entries_resp.Food_Entries.Food_Entry {
+			i, _ := strconv.Atoi(food_entry.Calories)
+			calories += i
+		}
+
+		fmt.Println(calories)
+		time.Sleep(60 * time.Second)
 	}
 }
