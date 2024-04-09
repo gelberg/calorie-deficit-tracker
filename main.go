@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -29,7 +30,7 @@ func main() {
 	conf.Endpoint = google.Endpoint
 	// Redirect user to Google's consent page to ask for permission
 	// for the scopes specified above.
-	authURL := conf.AuthCodeURL("state")
+	authURL := conf.AuthCodeURL("state", oauth2.AccessTypeOffline)
 	fmt.Printf("Visit the URL for the auth dialog: %v\n", authURL)
 
 	var code string
@@ -41,7 +42,12 @@ func main() {
 		log.Fatal(err)
 	}
 	client := conf.Client(oauth2.NoContext, tok)
+	year, month, _ := time.Now().UTC().Date()
+	todayStart := time.Date(year, month, 7, 0, 0, 0, 0, time.UTC)
+	yesterdayStart := todayStart.Add(-24 * time.Hour)
 
+	// + fmt.Sprint(todayStart.Local().UnixMilli())
+	// + fmt.Sprint(tomorrowStart.Local().UnixMilli()) + `
 	reqBody := `
 	{
 		"aggregateBy": [{
@@ -49,8 +55,8 @@ func main() {
 		  "dataSourceId": "derived:com.google.calories.expended:com.google.android.gms:merge_calories_expended"
 		}],
 		"bucketByTime": { "durationMillis": 86400000 },
-		"startTimeMillis": 1710705599000,
-		"endTimeMillis": 1710791999000
+		"startTimeMillis": ` + fmt.Sprint(yesterdayStart.UnixMilli()) + `,
+		"endTimeMillis": ` + fmt.Sprint(todayStart.UnixMilli()) + `
 	}`
 	reqBodyReader := strings.NewReader(reqBody)
 
