@@ -43,12 +43,12 @@ func main() {
 	}
 	client := conf.Client(oauth2.NoContext, tok)
 
-	year, month, day := time.Now().Date()
-	todayStart := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
-	fmt.Println("todayStart", todayStart)
-	tomorrowStart := todayStart.Add(24 * time.Hour)
+	for {
+		year, month, day := time.Now().Date()
+		todayStart := time.Date(year, month, day, 0, 0, 0, 0, time.FixedZone("GET", 4*60*60))
+		tomorrowStart := todayStart.Add(24 * time.Hour)
 
-	reqBody := `
+		reqBody := `
 	{
 		"aggregateBy": [{
 		  "dataTypeName": "com.google.calories.expended",
@@ -58,15 +58,18 @@ func main() {
 		"startTimeMillis": ` + fmt.Sprint(todayStart.UnixMilli()) + `,
 		"endTimeMillis": ` + fmt.Sprint(tomorrowStart.UnixMilli()) + `
 	}`
-	fmt.Println(reqBody)
-	reqBodyReader := strings.NewReader(reqBody)
+		fmt.Println(reqBody)
+		reqBodyReader := strings.NewReader(reqBody)
 
-	resp, err := client.Post("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", "application/json", reqBodyReader)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
-		log.Fatal(err)
+		resp, err := client.Post("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", "application/json", reqBodyReader)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
+			log.Fatal(err)
+		}
+		resp.Body.Close()
+
+		time.Sleep(5 * time.Second) // TODO: configurable parameter?
 	}
 }
