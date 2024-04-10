@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	"google.golang.org/api/fitness/v1"
 )
 
 func main() {
@@ -43,32 +43,33 @@ func main() {
 	}
 	client := conf.Client(oauth2.NoContext, tok)
 
+	svc, err := fitness.New(client)
+	if err != nil {
+		log.Fatalf("Unable to create Fitness service: %v", err)
+	}
+
 	for {
 		year, month, day := time.Now().Date() // TODO: fix discrepancy between time.Now() on local PC (UTC+4) and Docker (UTC+0)
 		todayStart := time.Date(year, month, day, 0, 0, 0, 0, time.FixedZone("GET", 4*60*60))
 		tomorrowStart := todayStart.Add(24 * time.Hour)
 
-		reqBody := `
-	{
-		"aggregateBy": [{
-		  "dataTypeName": "com.google.calories.expended",
-		  "dataSourceId": "derived:com.google.calories.expended:com.google.android.gms:merge_calories_expended"
-		}],
-		"bucketByTime": { "durationMillis": 86400000 },
-		"startTimeMillis": ` + fmt.Sprint(todayStart.UnixMilli()) + `,
-		"endTimeMillis": ` + fmt.Sprint(tomorrowStart.UnixMilli()) + `
-	}`
-		fmt.Println(reqBody)
-		reqBodyReader := strings.NewReader(reqBody)
-
-		resp, err := client.Post("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", "application/json", reqBodyReader)
-		if err != nil {
-			log.Fatal(err)
+		aggrReq := fitness.AggregateRequest{
+			AggregateBy: []*fitness.AggregateBy{{
+				DataTypeName: "com.google.calories.expended",
+				DataSourceId: "derived:com.google.calories.expended:com.google.android.gms:merge_calories_expended",
+			}},
+			BucketByTime: &fitness.BucketByTime{
+				DurationMillis: 24 * time.Hour.Milliseconds(),
+			},
+			StartTimeMillis: todayStart.UnixMilli(),
+			EndTimeMillis:   tomorrowStart.UnixMilli(),
 		}
-		if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
-			log.Fatal(err)
+		r, e := svc.Users.Dataset.Aggregate("me", &aggrReq).Do()
+		if e != nil {
+			log.Fatal(e)
+		} else {
+			fmt.Println(*&r.Bucket[0].Dataset[0].Point[0].Value[0].FpVal)
 		}
-		resp.Body.Close()
 
 		time.Sleep(5 * time.Second) // TODO: configurable parameter?
 	}
