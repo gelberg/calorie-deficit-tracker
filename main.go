@@ -42,22 +42,23 @@ func main() {
 		log.Fatal(err)
 	}
 	client := conf.Client(oauth2.NoContext, tok)
-	year, month, _ := time.Now().UTC().Date()
-	todayStart := time.Date(year, month, 7, 0, 0, 0, 0, time.UTC)
-	yesterdayStart := todayStart.Add(-24 * time.Hour)
 
-	// + fmt.Sprint(todayStart.Local().UnixMilli())
-	// + fmt.Sprint(tomorrowStart.Local().UnixMilli()) + `
+	year, month, day := time.Now().Date()
+	todayStart := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
+	fmt.Println("todayStart", todayStart)
+	tomorrowStart := todayStart.Add(24 * time.Hour)
+
 	reqBody := `
 	{
 		"aggregateBy": [{
-		  "dataTypeName": "calories",
+		  "dataTypeName": "com.google.calories.expended",
 		  "dataSourceId": "derived:com.google.calories.expended:com.google.android.gms:merge_calories_expended"
 		}],
 		"bucketByTime": { "durationMillis": 86400000 },
-		"startTimeMillis": ` + fmt.Sprint(yesterdayStart.UnixMilli()) + `,
-		"endTimeMillis": ` + fmt.Sprint(todayStart.UnixMilli()) + `
+		"startTimeMillis": ` + fmt.Sprint(todayStart.UnixMilli()) + `,
+		"endTimeMillis": ` + fmt.Sprint(tomorrowStart.UnixMilli()) + `
 	}`
+	fmt.Println(reqBody)
 	reqBodyReader := strings.NewReader(reqBody)
 
 	resp, err := client.Post("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", "application/json", reqBodyReader)
