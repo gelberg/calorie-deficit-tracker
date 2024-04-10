@@ -44,7 +44,7 @@ func main() {
 	client := conf.Client(oauth2.NoContext, tok)
 
 	for {
-		year, month, day := time.Now().Date()
+		year, month, day := time.Now().Date() // TODO: fix discrepancy between time.Now() on local PC (UTC+4) and Docker (UTC+0)
 		todayStart := time.Date(year, month, day, 0, 0, 0, 0, time.FixedZone("GET", 4*60*60))
 		tomorrowStart := todayStart.Add(24 * time.Hour)
 
