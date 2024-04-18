@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
+	kafka "github.com/segmentio/kafka-go"
 	"google.golang.org/api/fitness/v1"
 )
 
@@ -48,6 +50,22 @@ func main() {
 		log.Fatalf("Unable to create Fitness service: %v", err)
 	}
 
+	topic := "test"
+	partition := 0
+
+	conn, err := kafka.DialLeader(context.Background(), "tcp", "localhost:9092", topic, partition)
+	if err != nil {
+		log.Fatal("failed to dial leader:", err)
+	}
+
+	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Fatal("failed to close writer:", err)
+		}
+	}()
+
 	for {
 		year, month, day := time.Now().Date() // TODO: fix discrepancy between time.Now() on local PC (UTC+4) and Docker (UTC+0)
 		todayStart := time.Date(year, month, day, 0, 0, 0, 0, time.FixedZone("GET", 4*60*60))
@@ -64,11 +82,30 @@ func main() {
 			StartTimeMillis: todayStart.UnixMilli(),
 			EndTimeMillis:   tomorrowStart.UnixMilli(),
 		}
+
+		calories := 0
 		r, e := svc.Users.Dataset.Aggregate("me", &aggrReq).Do()
 		if e != nil {
 			log.Fatal(e)
 		} else {
-			fmt.Println(*&r.Bucket[0].Dataset[0].Point[0].Value[0].FpVal)
+			for _, b := range r.Bucket {
+				for _, d := range b.Dataset {
+					for _, p := range d.Point {
+						for _, v := range p.Value {
+							calories += int(v.FpVal)
+						}
+					}
+				}
+			}
+
+			fmt.Println(calories)
+		}
+
+		_, err = conn.WriteMessages(
+			kafka.Message{Value: []byte(fmt.Sprint(calories))},
+		)
+		if err != nil {
+			log.Fatal("failed to write messages:", err)
 		}
 
 		time.Sleep(5 * time.Second) // TODO: configurable parameter?
