@@ -16,6 +16,10 @@ import (
 	"google.golang.org/api/fitness/v1"
 )
 
+var (
+	kafkaEndpoint = os.Getenv("KAFKA_ENDPOINT")
+)
+
 func main() {
 	var credPath = flag.String("client", "client.json", "Path to configuration file containing the client's credentials.")
 	b, err := os.ReadFile(*credPath)
@@ -53,7 +57,7 @@ func main() {
 	topic := "test"
 	partition := 0
 
-	conn, err := kafka.DialLeader(context.Background(), "tcp", "localhost:9092", topic, partition)
+	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
 	if err != nil {
 		log.Fatal("failed to dial leader:", err)
 	}
