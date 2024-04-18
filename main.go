@@ -23,6 +23,10 @@ var oauthClient = oauth.Client{
 	TokenRequestURI:               "https://www.fatsecret.com/oauth/access_token",
 }
 
+var (
+	kafkaEndpoint = os.Getenv("KAFKA_ENDPOINT")
+)
+
 func authorize() *oauth.Credentials {
 	values := url.Values{}
 	oauthClient.SignForm(nil, "POST", oauthClient.TemporaryCredentialRequestURI, values, "", "oob")
@@ -81,7 +85,7 @@ func main() {
 	topic := "test"
 	partition := 0
 
-	conn, err := kafka.DialLeader(context.Background(), "tcp", "localhost:9092", topic, partition)
+	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
 	if err != nil {
 		log.Fatal("failed to dial leader:", err)
 	}
