@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gelberg/oauth1/oauth"
+	kafka "github.com/segmentio/kafka-go"
 	fat_secret "main.go/pkg" // TODO: fix this import?
 )
 
@@ -76,6 +78,22 @@ func main() {
 		os.WriteFile(*credPath, data, os.ModeAppend)
 	}
 
+	topic := "test"
+	partition := 0
+
+	conn, err := kafka.DialLeader(context.Background(), "tcp", "localhost:9092", topic, partition)
+	if err != nil {
+		log.Fatal("failed to dial leader:", err)
+	}
+
+	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Fatal("failed to close writer:", err)
+		}
+	}()
+
 	for {
 		values := url.Values{
 			"method": {"food_entries.get.v2"},
@@ -102,7 +120,14 @@ func main() {
 			calories += i
 		}
 
-		fmt.Println(calories)
+		_, err = conn.WriteMessages(
+			kafka.Message{Value: []byte(fmt.Sprint(calories))},
+		)
+		if err != nil {
+			log.Fatal("failed to write messages:", err)
+		}
+
 		time.Sleep(60 * time.Second)
 	}
+
 }
