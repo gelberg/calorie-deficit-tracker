@@ -92,7 +92,7 @@ func main() {
 	// 1.3. kafka initializes its listeners
 	connectionAttempts := 3
 	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
-	for connectionAttempts > 0 && err != nil { // TOOD: distinguish our case and others?
+	for connectionAttempts > 0 && err != nil { // TODO: distinguish our case and others?
 		conn, err = kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
 		connectionAttempts--
 		time.Sleep(time.Second)
