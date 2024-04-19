@@ -101,8 +101,6 @@ func main() {
 		log.Fatal("failed to dial leader:", err)
 	}
 
-	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-
 	defer func() {
 		if err := conn.Close(); err != nil {
 			log.Fatal("failed to close writer:", err)
@@ -135,6 +133,7 @@ func main() {
 			calories += i
 		}
 
+		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 		_, err = conn.WriteMessages(
 			kafka.Message{Value: []byte(fmt.Sprint(calories))},
 		)
