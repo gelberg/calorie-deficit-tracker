@@ -85,7 +85,18 @@ func main() {
 	topic := "test"
 	partition := 0
 
+	// Workaround for the following scenario:
+	// 1. docker-compose with kafka and this service is started:
+	// 1.1. kafka is started
+	// 1.2. this service attempts to connect to kafka, gets connection refuse and exits
+	// 1.3. kafka initializes its listeners
+	connectionAttempts := 3
 	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
+	for connectionAttempts > 0 && err != nil { // TOOD: distinguish our case and others?
+		conn, err = kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
+		connectionAttempts--
+		time.Sleep(time.Second)
+	}
 	if err != nil {
 		log.Fatal("failed to dial leader:", err)
 	}
