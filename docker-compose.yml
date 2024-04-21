@@ -30,6 +30,9 @@ services:
 
   fatsecret-producer:
     image: caloriecounter:latest
+    build:
+      context: fatsecret_producer
+      dockerfile: Dockerfile
     hostname: fatsecret-producer
     depends_on:
     - kafka-broker-1
@@ -40,6 +43,9 @@ services:
 
   google-fit-producer:
     image: googlefitproducer:latest
+    build:
+      context: google_fit_producer
+      dockerfile: Dockerfile
     hostname: google-fit-producer
     depends_on:
     - kafka-broker-1
@@ -50,6 +56,9 @@ services:
 
   calorie-deficit-calculator:
     image: calorie-deficit-calculator:latest
+    build:
+      context: calorie_deficit_calculator
+      dockerfile: Dockerfile
     hostname: calorie-deficit-calculator
     depends_on:
     - kafka-broker-1
