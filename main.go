@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	kafkaEndpoint = os.Getenv("KAFKA_ENDPOINT")
+	kafkaEndpoint              = os.Getenv("KAFKA_ENDPOINT")
+	googleFitRequestIntervalMs = os.Getenv("GOOGLE_FIT_REQUEST_INTERVAL_MS")
 )
 
 func connectToKafka() (*kafka.Conn, error) {
@@ -85,7 +86,7 @@ func main() {
 		}
 	}()
 
-	requestIntervalMs, err := strconv.Atoi(googleFitReqestIntervalMs)
+	requestIntervalMs, err := strconv.Atoi(googleFitRequestIntervalMs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func main() {
 				}
 			}
 
-			log.Printf("Consumption at %v: %v\n", time.Now(), calories)
+			log.Printf("Expenditure at %v: %v\n", time.Now(), calories)
 		}
 
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
