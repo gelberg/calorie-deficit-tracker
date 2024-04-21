@@ -1,0 +1,5 @@
+{
+    "ClientID":     "<insert client token here>",
+    "ClientSecret": "<insert client secret here>",
+    "RedirectURL":  "<insert redirect URL here>"
+}
