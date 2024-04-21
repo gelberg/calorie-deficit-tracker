@@ -1,0 +1,58 @@
+# Taken from https://jskim1991.medium.com/docker-docker-compose-example-for-kafka-zookeeper-and-schema-registry-c516422532e7
+# and modified according to https://github.com/bitnami/containers/blob/main/bitnami/kafka/docker-compose.yml
+version: '3'
+services:
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ALLOW_ANONYMOUS_LOGIN: yes
+    ports:
+      - "2181:2181"
+
+  kafka-broker-1:
+    image: bitnami/kafka:latest
+    hostname: kafka-broker-1
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://kafka-broker-1:9092,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:9092,EXTERNAL://localhost:9094
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  fatsecret-producer:
+    image: caloriecounter:latest
+    hostname: fatsecret-producer
+    depends_on:
+    - kafka-broker-1
+    stdin_open: true
+    environment:
+      KAFKA_ENDPOINT: 'kafka-broker-1:9092'
+      FATSECRET_REQUEST_INTERVAL_MS: 10000
+
+  google-fit-producer:
+    image: googlefitproducer:latest
+    hostname: google-fit-producer
+    depends_on:
+    - kafka-broker-1
+    stdin_open: true
+    environment:
+      KAFKA_ENDPOINT: 'kafka-broker-1:9092'
+      GOOGLE_FIT_REQUEST_INTERVAL_MS: 10000
+
+  calorie-deficit-calculator:
+    image: calorie-deficit-calculator:latest
+    hostname: calorie-deficit-calculator
+    depends_on:
+    - kafka-broker-1
+    environment:
+      KAFKA_ENDPOINT: 'kafka-broker-1:9092'
+      DEFICIT_REPORT_INTERVAL_MS: 10000
