@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -84,6 +85,14 @@ func main() {
 		}
 	}()
 
+	requestIntervalMs, err := strconv.Atoi(googleFitReqestIntervalMs)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	requestInterval := time.Millisecond * time.Duration(requestIntervalMs)
+	nextRequest := time.Now()
+
 	for {
 		year, month, day := time.Now().Date() // TODO: fix discrepancy between time.Now() on local PC (UTC+4) and Docker (UTC+0)
 		todayStart := time.Date(year, month, day, 0, 0, 0, 0, time.FixedZone("GET", 4*60*60))
@@ -116,7 +125,7 @@ func main() {
 				}
 			}
 
-			fmt.Println(calories)
+			log.Printf("Consumption at %v: %v\n", time.Now(), calories)
 		}
 
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
@@ -127,6 +136,7 @@ func main() {
 			log.Fatal("failed to write messages:", err)
 		}
 
-		time.Sleep(5 * time.Second) // TODO: configurable parameter?
+		nextRequest = nextRequest.Add(requestInterval)
+		time.Sleep(-time.Since(nextRequest))
 	}
 }
