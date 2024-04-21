@@ -24,7 +24,8 @@ var oauthClient = oauth.Client{
 }
 
 var (
-	kafkaEndpoint = os.Getenv("KAFKA_ENDPOINT")
+	kafkaEndpoint             = os.Getenv("KAFKA_ENDPOINT")
+	fatsecretReqestIntervalMs = os.Getenv("FATSECRET_REQUEST_INTERVAL_MS")
 )
 
 func authorize() *oauth.Credentials {
@@ -112,6 +113,14 @@ func main() {
 		}
 	}()
 
+	requestIntervalMs, err := strconv.Atoi(fatsecretReqestIntervalMs)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	requestInterval := time.Millisecond * time.Duration(requestIntervalMs)
+	nextRequest := time.Now()
+
 	for {
 		values := url.Values{
 			"method": {"food_entries.get.v2"},
@@ -146,7 +155,10 @@ func main() {
 			log.Fatal("failed to write messages:", err)
 		}
 
-		time.Sleep(60 * time.Second)
+		log.Printf("Consumption at %v: %v\n", time.Now(), calories)
+
+		nextRequest = nextRequest.Add(requestInterval)
+		time.Sleep(-time.Since(nextRequest))
 	}
 
 }
