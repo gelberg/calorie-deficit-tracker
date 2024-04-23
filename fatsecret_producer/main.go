@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -12,8 +11,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gelberg/calorie-deficit-tracker/common"
+
 	"github.com/gelberg/oauth1/oauth"
-	kafka "github.com/segmentio/kafka-go"
 	fat_secret "main.go/pkg" // TODO: fix this import?
 )
 
@@ -24,7 +24,6 @@ var oauthClient = oauth.Client{
 }
 
 var (
-	kafkaEndpoint             = os.Getenv("KAFKA_ENDPOINT")
 	fatsecretReqestIntervalMs = os.Getenv("FATSECRET_REQUEST_INTERVAL_MS")
 )
 
@@ -55,25 +54,6 @@ func authorize() *oauth.Credentials {
 	return tokenCred
 }
 
-func connectToKafka() (*kafka.Conn, error) {
-	topic := "consumption"
-	partition := 0
-	// Workaround for the following scenario:
-	// 1. docker-compose with kafka and this service is started:
-	// 1.1. kafka is started
-	// 1.2. this service attempts to connect to kafka, gets connection refuse and exits
-	// 1.3. kafka initializes its listeners
-	connectionAttempts := 3
-	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
-	for connectionAttempts > 0 && err != nil { // TODO: distinguish our case and others?
-		conn, err = kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
-		connectionAttempts--
-		time.Sleep(time.Second)
-	}
-
-	return conn, err
-}
-
 func main() {
 	var credPath = flag.String("client", "client.json", "Path to configuration file containing the client's credentials.")
 	b, err := os.ReadFile(*credPath)
@@ -102,7 +82,8 @@ func main() {
 		os.WriteFile(*credPath, data, os.ModeAppend)
 	}
 
-	conn, err := connectToKafka()
+	topic := "consumption"
+	conn, err := common.ConnectToKafka(topic)
 	if err != nil {
 		log.Fatal("failed to dial leader:", err)
 	}
@@ -148,9 +129,7 @@ func main() {
 		}
 
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-		_, err = conn.WriteMessages(
-			kafka.Message{Value: []byte(fmt.Sprint(calories))},
-		)
+		_, err = conn.Write([]byte(fmt.Sprint(calories)))
 		if err != nil {
 			log.Fatal("failed to write messages:", err)
 		}

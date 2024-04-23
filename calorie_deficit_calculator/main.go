@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -9,11 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/segmentio/kafka-go"
+	common "github.com/gelberg/calorie-deficit-tracker/common"
 )
 
 var (
-	kafkaEndpoint           = os.Getenv("KAFKA_ENDPOINT")
 	deficitReportIntervalMs = os.Getenv("DEFICIT_REPORT_INTERVAL_MS")
 	consumption             = 0
 	expenditure             = 0
@@ -21,28 +19,10 @@ var (
 	lock                    = sync.Mutex{}
 )
 
-func connectToKafka(topic string) (*kafka.Conn, error) {
-	partition := 0
-	// Workaround for the following scenario:
-	// 1. docker-compose with kafka and this service is started:
-	// 1.1. kafka is started
-	// 1.2. this service attempts to connect to kafka, gets connection refuse and exits
-	// 1.3. kafka initializes its listeners
-	connectionAttempts := 3
-	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
-	for connectionAttempts > 0 && err != nil { // TODO: distinguish our case and others?
-		conn, err = kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
-		connectionAttempts--
-		time.Sleep(time.Second)
-	}
-
-	return conn, err
-}
-
 func readConsumption() {
 	topic := "consumption"
 
-	conn, err := connectToKafka(topic)
+	conn, err := common.ConnectToKafka(topic)
 	if err != nil {
 		log.Fatal("failed to dial leader:", err)
 	}
@@ -73,7 +53,7 @@ func readConsumption() {
 func readExpenditure() {
 	topic := "expenditure"
 
-	conn, err := connectToKafka(topic)
+	conn, err := common.ConnectToKafka(topic)
 	if err != nil {
 		log.Fatal("failed to dial leader:", err)
 	}

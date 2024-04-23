@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -13,33 +12,13 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
-	kafka "github.com/segmentio/kafka-go"
+	"github.com/gelberg/calorie-deficit-tracker/common"
 	"google.golang.org/api/fitness/v1"
 )
 
 var (
-	kafkaEndpoint              = os.Getenv("KAFKA_ENDPOINT")
 	googleFitRequestIntervalMs = os.Getenv("GOOGLE_FIT_REQUEST_INTERVAL_MS")
 )
-
-func connectToKafka() (*kafka.Conn, error) {
-	topic := "expenditure"
-	partition := 0
-	// Workaround for the following scenario:
-	// 1. docker-compose with kafka and this service is started:
-	// 1.1. kafka is started
-	// 1.2. this service attempts to connect to kafka, gets connection refuse and exits
-	// 1.3. kafka initializes its listeners
-	connectionAttempts := 3
-	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
-	for connectionAttempts > 0 && err != nil { // TODO: distinguish our case and others?
-		conn, err = kafka.DialLeader(context.Background(), "tcp", kafkaEndpoint, topic, partition)
-		connectionAttempts--
-		time.Sleep(time.Second)
-	}
-
-	return conn, err
-}
 
 func main() {
 	var credPath = flag.String("client", "client.json", "Path to configuration file containing the client's credentials.")
@@ -75,7 +54,7 @@ func main() {
 		log.Fatalf("Unable to create Fitness service: %v", err)
 	}
 
-	conn, err := connectToKafka()
+	conn, err := common.ConnectToKafka("expenditure")
 	if err != nil {
 		log.Fatal("failed to dial leader:", err)
 	}
@@ -130,9 +109,7 @@ func main() {
 		}
 
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-		_, err = conn.WriteMessages(
-			kafka.Message{Value: []byte(fmt.Sprint(calories))},
-		)
+		_, err = conn.Write([]byte(fmt.Sprint(calories)))
 		if err != nil {
 			log.Fatal("failed to write messages:", err)
 		}

@@ -3,10 +3,11 @@
 FROM golang:1.20
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY calorie_deficit_calculator/go.mod calorie_deficit_calculator/go.sum ./
+COPY common ../common
 
 RUN go mod download
-COPY ./ ./
+COPY calorie_deficit_calculator/ ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /calorie-deficit-calculator
 

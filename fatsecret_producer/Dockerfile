@@ -3,10 +3,11 @@
 FROM golang:1.20
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY fatsecret_producer/go.mod fatsecret_producer/go.sum ./
+COPY common ../common
 
 RUN go mod download
-COPY ./ ./
+COPY fatsecret_producer/ ./
 COPY *.json ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /docker-calories-analyzer
