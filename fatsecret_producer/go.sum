@@ -1,10 +1,10 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/gelberg/oauth1 v0.2.3 h1:paItI7hQL6JNzrWvhFBuIxvQW8wpQNuGdOtSqQePZvI=
+github.com/gelberg/oauth1 v0.2.3/go.mod h1:PoHEJ1ZbY/CEpIFCZ7g8AEEC+EH2iAeAj2Bw7srdiaw=
 github.com/gomodule/oauth1 v0.2.0 h1:/nNHAD99yipOEspQFbAnNmwGTZ1UNXiD/+JLxwx79fo=
 github.com/gomodule/oauth1 v0.2.0/go.mod h1:4r/a8/3RkhMBxJQWL5qzbOEcaQmNPIkNoI7P8sXeI08=
-github.com/gelberg/oauth1 v0.2.2 h1:uIWdoWX4v9gsZtUVYwdqapinNhW5zx7mlXuejVjFqYk=
-github.com/gelberg/oauth1 v0.2.2/go.mod h1:Z88OZF5n1aBchF3UA3zUaFRlHewOM+U+UuEfPYP5vCM=
 github.com/klauspost/compress v1.15.9/go.mod h1:PhcZ0MbTNciWF3rruxRgKxI5NkcHHrHUDtV4Yw2GlzU=
 github.com/klauspost/compress v1.17.8 h1:YcnTYrq7MikUT7k0Yb5eceMmALQPYBW/Xltxn0NAMnU=
 github.com/klauspost/compress v1.17.8/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=

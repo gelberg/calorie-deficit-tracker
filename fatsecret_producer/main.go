@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/gelberg/calorie-deficit-tracker/common"
-
 	"github.com/gelberg/oauth1/oauth"
+
 	fat_secret "main.go/pkg" // TODO: fix this import?
 )
 
