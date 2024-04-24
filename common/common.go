@@ -2,7 +2,9 @@ package common
 
 import (
 	"context"
+	"log"
 	"os"
+	"strconv"
 	"time"
 
 	kafka "github.com/segmentio/kafka-go"
@@ -28,4 +30,17 @@ func ConnectToKafka(topic string) (*kafka.Conn, error) {
 	}
 
 	return conn, err
+}
+
+func GetEnvInt(param string, defaultValue int) int {
+	valueStr := os.Getenv(param)
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		log.Printf("Error on obtaining parameter %v: %v. Default "+
+			"interval %v ms will be used instead.", param, err, defaultValue)
+
+		return defaultValue
+	}
+
+	return value
 }

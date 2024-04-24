@@ -5,8 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -16,24 +16,28 @@ import (
 	"google.golang.org/api/fitness/v1"
 )
 
-var (
-	googleFitRequestIntervalMs = os.Getenv("GOOGLE_FIT_REQUEST_INTERVAL_MS")
+const (
+	RequestIntervalParamName = "GOOGLE_FIT_REQUEST_INTERVAL_MS"
+	DefaultRequestIntervalMs = 10000
 )
 
-func main() {
+func prepareConfig() (*oauth2.Config, error) {
 	var credPath = flag.String("client", "client.json", "Path to configuration file containing the client's credentials.")
 	b, err := os.ReadFile(*credPath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	var conf *oauth2.Config
 	json.Unmarshal(b, &conf)
 
-	// Your credentials should be obtained from the Google
-	// Developer Console (https://console.developers.google.com).
 	conf.Scopes = []string{"https://www.googleapis.com/auth/fitness.activity.read"}
 	conf.Endpoint = google.Endpoint
+
+	return conf, nil
+}
+
+func authorize(conf *oauth2.Config) (*http.Client, error) {
 	// Redirect user to Google's consent page to ask for permission
 	// for the scopes specified above.
 	authURL := conf.AuthCodeURL("state", oauth2.AccessTypeOffline)
@@ -45,9 +49,23 @@ func main() {
 	// Handle the exchange code to initiate a transport.
 	tok, err := conf.Exchange(oauth2.NoContext, code)
 	if err != nil {
+		return nil, err
+	}
+
+	client := conf.Client(oauth2.NoContext, tok)
+	return client, nil
+}
+
+func main() {
+	conf, err := prepareConfig()
+	if err != nil {
 		log.Fatal(err)
 	}
-	client := conf.Client(oauth2.NoContext, tok)
+
+	client, err := authorize(conf)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	svc, err := fitness.New(client)
 	if err != nil {
@@ -65,11 +83,7 @@ func main() {
 		}
 	}()
 
-	requestIntervalMs, err := strconv.Atoi(googleFitRequestIntervalMs)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	requestIntervalMs := common.GetEnvInt(RequestIntervalParamName, DefaultRequestIntervalMs)
 	requestInterval := time.Millisecond * time.Duration(requestIntervalMs)
 	nextRequest := time.Now()
 
@@ -90,26 +104,26 @@ func main() {
 			EndTimeMillis:   tomorrowStart.UnixMilli(),
 		}
 
-		calories := 0
-		r, e := svc.Users.Dataset.Aggregate("me", &aggrReq).Do()
-		if e != nil {
-			log.Fatal(e)
+		todayExpenditure := 0
+		resp, err := svc.Users.Dataset.Aggregate("me", &aggrReq).Do()
+		if err != nil {
+			log.Fatal(err)
 		} else {
-			for _, b := range r.Bucket {
+			for _, b := range resp.Bucket {
 				for _, d := range b.Dataset {
 					for _, p := range d.Point {
 						for _, v := range p.Value {
-							calories += int(v.FpVal)
+							todayExpenditure += int(v.FpVal)
 						}
 					}
 				}
 			}
 
-			log.Printf("Expenditure at %v: %v\n", time.Now(), calories)
+			log.Printf("Expenditure at %v: %v\n", time.Now(), todayExpenditure)
 		}
 
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-		_, err = conn.Write([]byte(fmt.Sprint(calories)))
+		_, err = conn.Write([]byte(fmt.Sprint(todayExpenditure)))
 		if err != nil {
 			log.Fatal("failed to write messages:", err)
 		}
