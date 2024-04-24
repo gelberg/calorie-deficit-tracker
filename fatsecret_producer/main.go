@@ -17,22 +17,40 @@ import (
 	fat_secret "main.go/pkg" // TODO: fix this import?
 )
 
-var oauthClient = oauth.Client{
-	TemporaryCredentialRequestURI: "https://www.fatsecret.com/oauth/request_token",
-	ResourceOwnerAuthorizationURI: "https://www.fatsecret.com/oauth/authorize",
-	TokenRequestURI:               "https://www.fatsecret.com/oauth/access_token",
-}
-
-var (
-	fatsecretReqestIntervalMs = os.Getenv("FATSECRET_REQUEST_INTERVAL_MS")
+const (
+	RequestIntervalParamName = "FATSECRET_REQUEST_INTERVAL_MS"
+	DefaultRequestIntervalMs = 10000
 )
 
-func authorize() *oauth.Credentials {
-	values := url.Values{}
-	oauthClient.SignForm(nil, "POST", oauthClient.TemporaryCredentialRequestURI, values, "", "oob")
-	tempCred, err := oauthClient.RequestTemporaryCredentials(nil, "oob", values)
+func prepareOAuthClient() (oauth.Client, error) {
+	oauthClient := oauth.Client{
+		TemporaryCredentialRequestURI: "https://www.fatsecret.com/oauth/request_token",
+		ResourceOwnerAuthorizationURI: "https://www.fatsecret.com/oauth/authorize",
+		TokenRequestURI:               "https://www.fatsecret.com/oauth/access_token",
+		SignatureMethod:               oauth.HMACSHA1,
+	}
+
+	var credPath = flag.String("client", "client.json", "Path to configuration file containing the client's credentials.")
+	b, err := os.ReadFile(*credPath)
 	if err != nil {
-		log.Fatal("RequestTemporaryCredentials:", err)
+		return oauth.Client{}, err
+	}
+
+	err = json.Unmarshal(b, &oauthClient.Credentials)
+	if err != nil {
+		return oauth.Client{}, err
+	}
+
+	return oauthClient, nil
+}
+
+func authorize(oauthClient oauth.Client) (*oauth.Credentials, error) {
+	values := url.Values{}
+	callbackURL := "oob"
+	oauthClient.SignForm(nil, "POST", oauthClient.TemporaryCredentialRequestURI, values, "", callbackURL)
+	tempCred, err := oauthClient.RequestTemporaryCredentials(nil, callbackURL, values)
+	if err != nil {
+		return nil, fmt.Errorf("oauth.Client.RequestTemporaryCredentials: %v", err)
 	}
 
 	u := oauthClient.AuthorizationURL(tempCred, nil)
@@ -46,40 +64,45 @@ func authorize() *oauth.Credentials {
 	oauthClient.SignForm(tempCred, "POST", oauthClient.TokenRequestURI, values, code, "")
 	tokenCred, _, err := oauthClient.RequestToken(nil, tempCred, code, values)
 	if err != nil {
-		log.Fatal(err)
-	} else {
-		fmt.Println("Authorization has succeeded. Token credentials:\nToken: ", tokenCred.Token, "\nSecret: ", tokenCred.Secret)
+		return nil, fmt.Errorf("oauth.Client.RequestToken: %v", err)
 	}
 
-	return tokenCred
+	return tokenCred, nil
 }
 
-func main() {
-	var credPath = flag.String("client", "client.json", "Path to configuration file containing the client's credentials.")
-	b, err := os.ReadFile(*credPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = json.Unmarshal(b, &oauthClient.Credentials)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	oauthClient.SignatureMethod = oauth.HMACSHA1
-
+func prepareTokenCredentials(oauthClient oauth.Client) (*oauth.Credentials, error) {
 	var tokenCred *oauth.Credentials
-	credPath = flag.String("token", "token.json", "Path to configuration file containing the token's credentials.")
-	b, err = os.ReadFile(*credPath)
+	credPath := flag.String("token", "token.json", "Path to configuration file containing the token's credentials.")
+	b, err := os.ReadFile(*credPath)
 	if err == nil {
 		err = json.Unmarshal(b, &tokenCred)
 	}
 
 	if err != nil {
-		tokenCred = authorize()
+		tokenCred, err = authorize(oauthClient)
+		if err != nil {
+			return nil, err
+		}
 
 		data, _ := json.Marshal(tokenCred)
-		os.WriteFile(*credPath, data, os.ModeAppend)
+		err = os.WriteFile(*credPath, data, os.ModeAppend)
+		if err != nil {
+			log.Printf("Authorization has succeeded, but error occured on token credentials save: %v", err)
+		}
+	}
+
+	return tokenCred, nil
+}
+
+func main() {
+	oauthClient, err := prepareOAuthClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tokenCred, err := prepareTokenCredentials(oauthClient)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	topic := "consumption"
@@ -94,11 +117,7 @@ func main() {
 		}
 	}()
 
-	requestIntervalMs, err := strconv.Atoi(fatsecretReqestIntervalMs)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	requestIntervalMs := common.GetEnvInt(RequestIntervalParamName, DefaultRequestIntervalMs)
 	requestInterval := time.Millisecond * time.Duration(requestIntervalMs)
 	nextRequest := time.Now()
 
@@ -115,29 +134,31 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer resp.Body.Close()
 
 		response, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		var food_entries_resp fat_secret.Response
 		json.Unmarshal(response, &food_entries_resp)
 
-		calories := 0
+		todayConsumption := 0
 		for _, food_entry := range food_entries_resp.Food_Entries.Food_Entry {
 			i, _ := strconv.Atoi(food_entry.Calories)
-			calories += i
+			todayConsumption += i
 		}
 
 		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-		_, err = conn.Write([]byte(fmt.Sprint(calories)))
+		_, err = conn.Write([]byte(fmt.Sprint(todayConsumption)))
 		if err != nil {
 			log.Fatal("failed to write messages:", err)
 		}
 
-		log.Printf("Consumption at %v: %v\n", time.Now(), calories)
+		log.Printf("Consumption at %v: %v\n", time.Now(), todayConsumption)
 
 		nextRequest = nextRequest.Add(requestInterval)
 		time.Sleep(-time.Since(nextRequest))
 	}
-
 }
