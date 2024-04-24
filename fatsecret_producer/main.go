@@ -108,7 +108,7 @@ func main() {
 	topic := "consumption"
 	conn, err := common.ConnectToKafka(topic)
 	if err != nil {
-		log.Fatal("failed to dial leader:", err)
+		log.Fatal(err)
 	}
 
 	defer func() {

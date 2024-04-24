@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -11,12 +10,16 @@ import (
 	common "github.com/gelberg/calorie-deficit-tracker/common"
 )
 
+const (
+	ReportIntervalParamName        = "DEFICIT_REPORT_INTERVAL_MS"
+	DefaultDeficitReportIntervalMs = 10000
+)
+
 var (
-	deficitReportIntervalMs = os.Getenv("DEFICIT_REPORT_INTERVAL_MS")
-	consumption             = 0
-	expenditure             = 0
-	deficit                 = 0
-	lock                    = sync.Mutex{}
+	consumption = 0
+	expenditure = 0
+	deficit     = 0
+	lock        = sync.Mutex{}
 )
 
 func readConsumption() {
@@ -24,7 +27,7 @@ func readConsumption() {
 
 	conn, err := common.ConnectToKafka(topic)
 	if err != nil {
-		log.Fatal("failed to dial leader:", err)
+		log.Fatal(err)
 	}
 
 	for {
@@ -44,10 +47,6 @@ func readConsumption() {
 		deficit = expenditure - consumption
 		lock.Unlock()
 	}
-
-	// if err := conn.Close(); err != nil {
-	// 	log.Fatal("failed to close connection:", err)
-	// }
 }
 
 func readExpenditure() {
@@ -55,7 +54,7 @@ func readExpenditure() {
 
 	conn, err := common.ConnectToKafka(topic)
 	if err != nil {
-		log.Fatal("failed to dial leader:", err)
+		log.Fatal(err)
 	}
 
 	for {
@@ -75,21 +74,13 @@ func readExpenditure() {
 		deficit = expenditure - consumption
 		lock.Unlock()
 	}
-
-	// if err := conn.Close(); err != nil {
-	// 	log.Fatal("failed to close connection:", err)
-	// }
 }
 
 func main() {
 	go readConsumption()
 	go readExpenditure()
 
-	reportIntervalMs, err := strconv.Atoi(deficitReportIntervalMs)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	reportIntervalMs := common.GetEnvInt(ReportIntervalParamName, DefaultDeficitReportIntervalMs)
 	reportInterval := time.Millisecond * time.Duration(reportIntervalMs)
 	nextReport := time.Now()
 

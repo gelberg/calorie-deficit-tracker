@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -29,7 +30,11 @@ func ConnectToKafka(topic string) (*kafka.Conn, error) {
 		time.Sleep(time.Second)
 	}
 
-	return conn, err
+	if err != nil {
+		return nil, fmt.Errorf("kafka.DialLeader(): %v", err)
+	}
+
+	return conn, nil
 }
 
 func GetEnvInt(param string, defaultValue int) int {
