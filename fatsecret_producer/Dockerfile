@@ -10,6 +10,6 @@ RUN go mod download
 COPY fatsecret_producer/ ./
 COPY *.json ./
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /docker-calories-analyzer
+RUN CGO_ENABLED=0 GOOS=linux go build -o /fatsecret-producer
 
-CMD [ "/docker-calories-analyzer" ]
+CMD [ "/fatsecret-producer" ]

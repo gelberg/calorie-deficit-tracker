@@ -17,21 +17,17 @@ services:
     hostname: kafka-broker-1
     ports:
       - "9092:9092"
-      - "9094:9094"
     depends_on:
       - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://kafka-broker-1:9092,EXTERNAL://0.0.0.0:9094
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:9092,EXTERNAL://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   fatsecret-producer:
-    image: caloriecounter:latest
+    image: fatsecret-producer:latest
     build:
-      context: .
       dockerfile: fatsecret_producer/Dockerfile
     hostname: fatsecret-producer
     depends_on:
@@ -42,9 +38,8 @@ services:
       FATSECRET_REQUEST_INTERVAL_MS: 10000
 
   google-fit-producer:
-    image: googlefitproducer:latest
+    image: google-fit-producer:latest
     build:
-      context: .
       dockerfile: google_fit_producer/Dockerfile
     hostname: google-fit-producer
     depends_on:
@@ -57,7 +52,6 @@ services:
   calorie-deficit-calculator:
     image: calorie-deficit-calculator:latest
     build:
-      context: .
       dockerfile: calorie_deficit_calculator/Dockerfile
     hostname: calorie-deficit-calculator
     depends_on:
