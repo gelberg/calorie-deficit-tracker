@@ -77,6 +77,22 @@ func readExpenditure() {
 }
 
 func main() {
+	fmt.Print("Enter diet start date in YYYY-MM-DD format: ")
+	var startDate string
+	fmt.Scanln(&startDate)
+
+	_, err := time.Parse(time.DateOnly, startDate)
+	if err != nil {
+		log.Fatalf("Failed to parse diet start date: %v.", err)
+	}
+
+	topic := "start_tracking"
+	conn, err := common.ConnectToKafka(topic)
+	if err != nil {
+		log.Fatal(err)
+	}
+	conn.Write([]byte(startDate))
+
 	go readConsumption()
 	go readExpenditure()
 
